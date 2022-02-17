@@ -1,12 +1,8 @@
 """
 Placeholder docstring
 """
-# pylint: disable=E0401
-# Following marks problems with LazyLoader of tensorflow
-# pylint: disable=E0611
-# pylint: disable=E1101
-import matplotlib.pyplot as plt
-import pandas as pd
+import matplotlib.pyplot as plt 
+import pandas as pd  
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots

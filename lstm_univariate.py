@@ -1,8 +1,3 @@
-
-# pylint: disable=E0401
-# Following marks problems with LazyLoader of tensorflow
-# pylint: disable=E0611 
-# pylint: disable=E1101
 from tensorflow.keras.layers import Dense, LSTM, Dropout
 from tensorflow.keras.models import Sequential
 import pandas as pd
