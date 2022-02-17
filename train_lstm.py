@@ -4,7 +4,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
 
-from Data_Preparation import Data_Preparation
+from data_preparation import Data_Preparation
 
 prep_data = Data_Preparation()
 prep_data.prepare_data()

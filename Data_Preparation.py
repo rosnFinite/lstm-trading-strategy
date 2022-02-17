@@ -1,10 +1,20 @@
+"""
+Provides a class responsible for preparing available timeseries data
+for training the LSTM Network
+"""
+# pylint: disable=E1101
 import os
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
 
 
-class Data_Preparation():
+class DataPreparation():
+    """
+    Prepares all available timeseries data in /data for training.
+    This includes combining the datasets and transforming them into the needed format for training
+    """
+
     def __init__(self, train_split:float=0.65):
         self.scaler = MinMaxScaler(feature_range=(0,1))
         if train_split >= 1 and train_split <= 0:
@@ -20,26 +30,37 @@ class Data_Preparation():
 
 
     def __collect_timeseries(self):
-        for subdir, dirs, files in os.walk("data/"):
+        for subdir, _, files in os.walk("data/"):
             for file in files:
                 filepath = subdir + "/" + file
 
                 if filepath.endswith("prep.csv"):
                     stock_symbol = filepath.split("/")[2].split("_")[0]
                     self.stocks.append(stock_symbol)
-                    df = pd.read_csv(filepath, index_col=0, parse_dates=True)
-                    df = df.iloc[df.apply(pd.Series.first_valid_index).max():].reset_index(drop=True)
-                    self.df_combined[stock_symbol] = df["close"]
-                    self.df_combined[stock_symbol+"_ma"] = df["MA_30"]
-    
+                    df_ts = pd.read_csv(filepath, index_col=0, parse_dates=True)
+                    df_ts = df_ts.iloc[df_ts.apply(pd.Series.first_valid_index).max():] \
+                            .reset_index(drop=True)
+                    self.df_combined[stock_symbol] = df_ts["close"]
+                    self.df_combined[stock_symbol+"_ma"] = df_ts["MA_30"]
+
     def __scaling_combined_timeseries(self):
-        self.df_combined[self.df_combined.columns] = self.scaler.fit_transform(self.df_combined[self.df_combined.columns])
+        self.df_combined[self.df_combined.columns] = \
+            self.scaler.fit_transform(self.df_combined[self.df_combined.columns])
 
     def __collect_and_scale_data(self):
         self.__collect_timeseries()
         self.__scaling_combined_timeseries()
 
     def prepare_data(self):
+        """
+        Formats data into train and test data.
+        For every single stock inside the combined timeseries it will create
+        x_train => sliding windows of last 30 days
+        y_train => the expected value of the next day and MA for next 30 days
+        (same for x_test and y_test)
+        and recombines them to one train and test dataset
+        """
+
         print("Start preparing data for all available stocks in /data")
         self.__collect_and_scale_data()
 
@@ -72,9 +93,9 @@ class Data_Preparation():
             self.x_test.append(x_test)
             self.y_test.append(y_test)
             print(f"\t\tFinished preparing test data -> X {x_test.shape}, Y {y_train.shape}")
-        
+
         self.x_train = np.array(self.x_train)
-        self.x_train = np.reshape(self.x_train, (self.x_train.shape[1]*self.x_train.shape[0], 30, 1))
+        self.x_train = np.reshape(self.x_train, (self.x_train.shape[1]*self.x_train.shape[0], 30,1))
         self.y_train = np.array(self.y_train)
         self.y_train = np.reshape(self.y_train, (self.y_train.shape[1]*self.y_train.shape[0], 2))
 

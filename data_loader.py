@@ -1,31 +1,47 @@
-from fileinput import close
+"""
+Provides functionality to load new timeseries data from TwelveAPI and adds additional technical
+indicators
+"""
+import io
+import pathlib
 import pandas as pd
-from .CONFIG import API_KEY
 import numpy as np
 import requests
-import io
-import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-import pathlib
 from plotly.subplots import make_subplots
+from config import API_KEY
 
-class Data_Loading():
+class DataLoader():
+    """
+    Allows loading/saving of historical timeseries data from TwelveAPI for a given symbol
+    and corresponding exchange. In addition, technical indicators (RSI, SMA and MACD) will
+    be calculated and added to the timeseries.
+    """
     def __init__(self) -> None:
-        self.data = None
+        self.data = pd.DataFrame()
 
-    def load_historical_data(self, symbol:str, exchange:str="NYSE", folder:str=None, visualize:bool=False):
-        """ Requests timeseries data from the API, adds additional technical indicators (SMA,MACD,RSI) and saves it
-        under /data/<symbol>_1day_prep.csv
+    def load_historical_data(self, symbol:str,
+                             exchange:str="NYSE", folder:str=None, visualize:bool=False):
+        """
+        Requests timeseries data from the API, adds additional technical indicators
+        (SMA,MACD,RSI) and saves it under /data/<symbol>_1day_prep.csv
 
         Keyword arguments:
         symbol -- Stock Symbol which identifies the company in the stock market
         exchange -- Stock-Exchange from which to collect historical data (default: NYSE)
-        folder -- Allows to save data into specific directory inside /data -> /data/<name>/<symbol>_1day_prep.csv (default: /data/<symbol>_1day_prep.csv)
-        visualize -- If True, will plot the timeseries and technical indicators via plotly (default: False)
+        folder -- Allows to save data into specific directory inside
+                  /data -> /data/<name>/<symbol>_1day_prep.csv
+                  (default: /data/<symbol>_1day_prep.csv)
+        visualize -- If True, will plot the timeseries and technical indicators
+                     via plotly (default: False)
         """
         url = "https://twelve-data1.p.rapidapi.com/time_series"
 
-        querystring = {"exchange": exchange,"symbol":symbol, "interval":"1day", "outputsize":2520, "format":"csv"}
+        querystring = {"exchange": exchange,
+                       "symbol":symbol,
+                       "interval":"1day",
+                       "outputsize":2520,
+                       "format":"csv"}
 
         headers = {
             'x-rapidapi-host': "twelve-data1.p.rapidapi.com",
@@ -43,13 +59,16 @@ class Data_Loading():
         try:
             self.data["OHLC_avg"] = self.data[["open", "high", "low", "close"]].mean(axis=1)
         except KeyError as error:
-            om = "Orignal error message: "+ str(error)
-            sep = "-"*len(om)
+            o_error = "Orignal error message: "+ str(error)
+            sep = "-"*len(o_error)
             print(sep)
-            print(om)
-            print(f"KeyError: Couldn't load historical data for given symbol {symbol} from {exchange}")
-            print("\tCheck if symbol existes and wheter it is listed on the given exchange.")
-            print("\tIf still no success, the API(twelveAPI) might not support the requested symbol or exchange.")
+            print(o_error)
+            print("KeyError: Couldn't load historical data for given "
+                   f"symbol {symbol} from {exchange}")
+            print("\tCheck if symbol existes and wheter it is listed on the given "
+                    "exchange.")
+            print("\tIf still no success, the API(twelveAPI) might not support the "
+                    "requested symbol or exchange.")
             print(sep)
             return
         # Add additional technical indicators to timeseries
@@ -61,16 +80,18 @@ class Data_Loading():
             self.__visualize_data()
 
         # Write data to csv file
-        if folder == None:
+        if folder is None:
             self.data.to_csv("data/" + symbol + "_1day_prep.csv")
         else:
             pathlib.Path("data/"+folder).mkdir(exist_ok=True)
             self.data.to_csv("data/" + folder + "/"+ symbol + "_1day_prep.csv")
-    
-    def __add_moving_average(self, window_sizes:list=[30,100,200]):
+
+    def __add_moving_average(self, window_sizes:list=None):
+        if window_sizes is None:
+            window_sizes = [30,100,200]
         for window in window_sizes:
             self.data["MA_"+str(window)] = self.data["OHLC_avg"].rolling(window=window).mean()
-    
+
     def __add_macd(self):
         ema_26 = self.data["OHLC_avg"].ewm(span=26, adjust=False, min_periods=26).mean()
         ema_12 = self.data["OHLC_avg"].ewm(span=12, adjust=False, min_periods=12).mean()
@@ -82,21 +103,21 @@ class Data_Loading():
         self.data["MACD_h"] = self.data.index.map(macd_h)
         self.data["MACD_s"] = self.data.index.map(macd_s)
 
-         
+
     def __add_rsi(self):
         close_delta = self.data["OHLC_avg"].diff()
 
-        up = close_delta.clip(lower=0)
-        down = -1 * close_delta.clip(upper=0)
+        higher_close = close_delta.clip(lower=0)
+        lower_close = -1 * close_delta.clip(upper=0)
 
-        # Using exponential moving average 
-        ma_up = up.ewm(com= 14-1, adjust=True, min_periods=14).mean()
-        ma_down = down.ewm(com=14-1, adjust=True, min_periods=14).mean()
+        # Using exponential moving average
+        ma_up = higher_close.ewm(com= 14-1, adjust=True, min_periods=14).mean()
+        ma_down = lower_close.ewm(com=14-1, adjust=True, min_periods=14).mean()
 
         rsi = ma_up / ma_down
         rsi = 100 -(100/(1+rsi))
         self.data["RSI"] = self.data.index.map(rsi)
-    
+
     def __visualize_data(self):
         # Plot MACD
         fig = make_subplots(rows=3, cols=1)
@@ -184,11 +205,4 @@ class Data_Loading():
         )
         # Update options and show plot
         fig.update_layout(layout)
-        fig.show()        
-    
-"""
-prep = Data_Loading()
-prep.load_historical_data(symbol="NVDA", folder="TEST", visualize=True)
-"""
-
-
+        fig.show()

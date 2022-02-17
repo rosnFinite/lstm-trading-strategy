@@ -52,7 +52,7 @@ df_combined[["intel","intel_ma","nvidia","nvidia_ma","amazon","amazon_ma","micro
                                                                                                                                                                                     "google",
                                                                                                                                                                                     "google_ma"]])
 
-num_past = 30
+NUM_PAST = 30
 split_index = int(len(df_combined)*0.8)
 combined_x_train = []
 combined_y_train = []
@@ -69,8 +69,8 @@ for stock in stocks:
 
     x_train = []
     y_train = []
-    for i in range(num_past, split_index-30):
-        x_train.append(values[i-num_past:i, 0])
+    for i in range(NUM_PAST, split_index-30):
+        x_train.append(values[i-NUM_PAST:i, 0])
         y_train.append([values[i, 0],ma_values[i+30, 0]])
     x_train, y_train = np.array(x_train), np.array(y_train)
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
@@ -80,8 +80,8 @@ for stock in stocks:
 
     x_test = []
     y_test = []
-    for i in range(split_index+num_past, len(df_combined)-30):
-        x_test.append(values[i-num_past:i, 0])
+    for i in range(split_index+NUM_PAST, len(df_combined)-30):
+        x_test.append(values[i-NUM_PAST:i, 0])
         #print(ma_values[i+30])
         y_test.append([values[i, 0],ma_values[i+30, 0]])
     x_test, y_test = np.array(x_test), np.array(y_test)

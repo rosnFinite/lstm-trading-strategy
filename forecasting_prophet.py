@@ -1,14 +1,19 @@
+"""
+Forecasting with Facebook Prophet
+"""
+# pylint: disable=E0401
+# pylint: disable=E1101
+import os
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 from prophet import Prophet
-import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 df_ts = pd.read_csv("data/NVDA_1day_prep.csv", index_col=0)
 df_ts = df_ts.iloc[df_ts.apply(pd.Series.first_valid_index).max():].reset_index(drop=True)
 
-df_prophet = df_ts.drop(columns=["open","high","low","close","volume","MA_30","MA_100","MA_200","MACD","MACD_h","MACD_s","RSI"])
+df_prophet = df_ts.drop(columns=["open","high","low","close","volume","MA_30",
+                                 "MA_100","MA_200","MACD","MACD_h","MACD_s","RSI"])
 df_prophet = df_prophet.rename(columns={"datetime":"ds", "OHLC_avg":"y"})
 """
 df_prophet["volume"] = df_ts["volume"]
