@@ -1,13 +1,14 @@
 """
 Placeholder docstring
 """
-import matplotlib.pyplot as plt 
-import pandas as pd  
+import matplotlib.pyplot as plt
+import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import load_model
+from config import Config
 
 
 
@@ -23,7 +24,7 @@ from tensorflow.keras.models import load_model
 # RSI crosses 70 from above-> Sell signal for bought stocks
 
 
-class TestBroker():
+class Backtester():
     """
     PlaceholderDosctring
     """
@@ -53,6 +54,8 @@ class TestBroker():
         self.timeseries = self.timeseries \
                           .iloc[self.timeseries.apply(pd.Series.first_valid_index).max():] \
                           .reset_index(drop=True)
+        self.timeseries = self.timeseries.iloc[Config.SIMULATION_START_INDEX:] \
+                          .reset_index(drop=True)
         print(self.timeseries)
         # Index denotes the current time
         self.index = 0
@@ -66,35 +69,40 @@ class TestBroker():
             # Check model architecture
             self.model.summary()
 
+    def start_simulation(self, strategy:int=4):
+        """Starts the backtesting process to validate the performance
+        of the selected strategy
 
-    def run_simulation(self):
-        """Moves through timeseries one step at a time"""
-        for _ in range(len(self.timeseries) - self.index):
-            # Sells stock if stop_loss was hit or updates stop_loss if not
-            # stop_loss default on 25% loss
-            #self.check_sl_tp()
-            self.sell_all()
+        Keyword arguments:
+        strategy -- Strategy to be becktested
+                    possible values:
+                    0 = Moving Average Crossover
+                    1 = MACD Crossover
+                    2 = RSI + MACD
+                    3 = Univariate LSTM Price Prediction
+                    4 = Univariate LSTM Price + MA_30 Prediction [default]
+        """
+        def run_simulation(strategy_function, check_sl_tp=True):
+            """Moves through timeseries one step at a time"""
+            for _ in range(len(self.timeseries)):
+                if check_sl_tp:
+                    self.check_sl_tp()
 
-            # Check for new buy signal (MA crossover)
-            #self.check_ma_buy_signal()
+                strategy_function()
 
-            # Check for new buy signal (MACD crossover)
-            #self.check_macd_buy_signal()
+                self.update_performance()
+                self.index += 1
 
-            # Check for RSI + MACD signals (Long and Short)
-            #self.check_rsi_signals()
-
-            # Check for Buy Signals multivariate LSTM
-            #technical hatte num_past=24
-            # self.check_uni_lstm_signals()
-            # self.check_multi_lstm_signals(num_past=24)
-            self.check_uni_lstm_ma_day_signals()
-
-            #self.check_persitent_model_signals()
-
-            # Update total value of investments and available balance
-            self.update_performance()
-            self.index += 1
+        if strategy == 0:
+            run_simulation(self.check_ma_buy_signal)
+        elif strategy == 1:
+            run_simulation(self.check_macd_buy_signal)
+        elif strategy == 2:
+            run_simulation(self.check_rsi_signals)
+        elif strategy == 3:
+            run_simulation(self.check_uni_lstm_signals, check_sl_tp=False)
+        elif strategy == 4:
+            run_simulation(self.check_uni_lstm_ma_day_signals, check_sl_tp=False)
 
     def buy(self, current_index, position_type:str, verbose=True):
         """
@@ -269,6 +277,8 @@ class TestBroker():
         # Only predict if enough past values exist for prediction
         if self.index < num_past or len(self.active_trades)>0:
             return
+        if len(self.active_trades) > 0:
+            self.sell_all()
         # Create Feature list of last num_past closing prices
         x_past = np.array([self.scaled_timeseries[self.index-num_past:self.index, \
                                                   0:self.scaled_timeseries.shape[1]]])
@@ -295,6 +305,8 @@ class TestBroker():
         """
         if self.index < num_past or len(self.active_trades)>0:
             return
+        if len(self.active_trades) > 0:
+            self.sell_all()
 
         # Create Feature list of last num_past closing prices
         x_past = np.array([self.scaled_timeseries[self.index-num_past:self.index, 3]])
@@ -311,7 +323,7 @@ class TestBroker():
         elif y_pred < current_price - current_price*0.03:
             self.buy(current_index=self.index, position_type="short", verbose=False)
 
-    def check_uni_lstm_ma_day_signals(self, num_past=30, theta_threshold=1.01):
+    def check_uni_lstm_ma_day_signals(self, num_past=30, theta_threshold=1.05):
         """
         Uses the predicted next day price and predicted SMA for the next 30 days of
         an univariate LSTM to find good entry points for a long position.
@@ -425,7 +437,6 @@ class TestBroker():
             y=df_perf["return"],
             name="Account Performance",
         )
-        self.timeseries["close"] = pd.to_numeric(self.timeseries["close"], errors="coerce")
         stock_trace = go.Scatter(
             x=self.timeseries.index,
             y=(self.timeseries["close"]/self.timeseries.iloc[0]["close"] - 1)*100,
@@ -485,8 +496,8 @@ class TestBroker():
             # roc = (self.balance - 10000)*100 / self.total_invested
             roc = (self.balance / self.start_balance) * 100 - 100
             print(f'Strategy yield = {roc:.2f}%')
-            stock_yield = (self.timeseries.iloc[-1]["close"]/self.timeseries.iloc[0]["close"] - 1) \
-                          * 100
+            stock_yield = (self.timeseries.iloc[-1]["close"]/ self.timeseries.iloc[0]["close"] - 1) \
+                           * 100
             print(f'Stock yield = {stock_yield:.2f}%')
             print("======================================")
 
@@ -515,10 +526,10 @@ class TestBroker():
 
 # model_path="models/multivariate_lstm128x64_technical.h5"
 # model_path="models/univariate_lstm50x50x50.h5"
-broker = TestBroker(balance=1000,
+broker = Backtester(balance=1000,
                     invest_per_trade=0.1,
-                    data_path="data/Energie/GE_1day_prep.csv",
+                    data_path="data/Technologie/GOOGL_1day_prep.csv",
                     model_path="models/NextDay+Ma/lstm50x50x50.h5")
-broker.run_simulation()
+broker.start_simulation()
 broker.print_statistics()
 # broker.plot_timeseries()

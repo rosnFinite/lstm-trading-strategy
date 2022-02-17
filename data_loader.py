@@ -10,7 +10,7 @@ import numpy as np
 import requests
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from config import API_KEY
+from api import API_KEY
 
 class DataLoader():
     """

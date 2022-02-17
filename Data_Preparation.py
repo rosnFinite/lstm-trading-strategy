@@ -7,7 +7,7 @@ import os
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
-
+from config import Config
 
 class DataPreparation():
     """
@@ -15,11 +15,11 @@ class DataPreparation():
     This includes combining the datasets and transforming them into the needed format for training
     """
 
-    def __init__(self, train_split:float=0.65):
+    def __init__(self):
         self.scaler = MinMaxScaler(feature_range=(0,1))
-        if train_split >= 1 and train_split <= 0:
+        if Config.TRAIN_SPLIT >= 1 and Config.TRAIN_SPLIT <= 0:
             raise ValueError("train split >= 1 or <= 0 are invalid !")
-        self.train_split = train_split
+        self.train_split = Config.TRAIN_SPLIT
         self.stocks = []
         self.df_combined = pd.DataFrame()
 
