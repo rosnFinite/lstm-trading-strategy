@@ -2,6 +2,9 @@
 Placeholder docstring
 """
 # pylint: disable=E0401
+# Following marks problems with LazyLoader of tensorflow
+# pylint: disable=E0611
+# pylint: disable=E1101
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -10,7 +13,7 @@ from plotly.subplots import make_subplots
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import load_model
 
-# pylint: disable=E1101
+
 
 # Moving Average crossover strategy
 # Whenever MA100 crosses over MA200 -> buy

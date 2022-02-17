@@ -2,6 +2,7 @@
 Provides functionality to load new timeseries data from TwelveAPI and adds additional technical
 indicators
 """
+# pylint: disable=E0401
 import io
 import pathlib
 import pandas as pd
