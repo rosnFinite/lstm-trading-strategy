@@ -21,6 +21,7 @@ class DataPreparation():
             raise ValueError("train split >= 1 or <= 0 are invalid !")
         self.train_split = Config.TRAIN_SPLIT
         self.stocks = []
+        self._dfs = []
         self.df_combined = pd.DataFrame()
 
         self.x_train = []
@@ -30,6 +31,7 @@ class DataPreparation():
 
 
     def __collect_timeseries(self):
+        self._dfs = []
         for subdir, _, files in os.walk("data/"):
             for file in files:
                 filepath = subdir + "/" + file
@@ -42,6 +44,8 @@ class DataPreparation():
                             .reset_index(drop=True)
                     self.df_combined[stock_symbol] = df_ts["close"]
                     self.df_combined[stock_symbol+"_ma"] = df_ts["MA_30"]
+                    df_ts = df_ts[["close","MA_30","MA_100","MA_200","MACD","MACD_h","MACD_s","RSI"]]
+                    self._dfs.append(df_ts)
 
     def __scaling_combined_timeseries(self):
         self.df_combined[self.df_combined.columns] = \
@@ -50,6 +54,14 @@ class DataPreparation():
     def __collect_and_scale_data(self):
         self.__collect_timeseries()
         self.__scaling_combined_timeseries()
+    
+    @property
+    def dfs(self):
+        """
+        Get List of Stock-Dataframes and corresponding symbols
+        """
+        self.__collect_timeseries()
+        return (self._dfs, self.stocks)
 
     def prepare_data(self):
         """
